@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <title>Клікер з лідербордом</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      background-color: #f0f0f0;
+      padding: 20px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error {
+      color: red;
+    }
+
+    .success {
+      color: green;
+    }
+
+    .button {
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      background-color: #007bff;
+      color: white;
+    }
+
+    #leaderboard {
+      margin-top: 20px;
+      background: #fff;
+      padding: 10px;
+      border-radius: 10px;
+      max-width: 300px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loginScreen">
+    <h2>Увійти або Зареєструватись</h2>
+    <input type="text" id="username" placeholder="Нікнейм" /><br />
+    <input type="password" id="password" placeholder="Пароль" /><br />
+    <button class="button" onclick="register()">Зареєструватись</button>
+    <button class="button" onclick="login()">Увійти</button>
+    <p id="loginMessage"></p>
+  </div>
+
+  <div id="gameScreen" class="hidden">
+    <h1>Коіни: <span id="coinCount">0</span></h1>
+    <button class="button" onclick="addCoin()">+ Коїн</button>
+    <button class="button" onclick="upgrade()">Апгрейд (<span id="upgradeCost">10</span> коінів)</button>
+    <p>Ви увійшли як: <strong id="currentUser"></strong></p>
+    <button class="button" onclick="logout()">Вийти</button>
+
+    <div id="leaderboard">
+      <h3>🏆 Лідерборд</h3>
+      <ol id="leaderList"></ol>
+    </div>
+  </div>
+
+  <script>
+    const coinCount = document.getElementById("coinCount");
+    const upgradeCostSpan = document.getElementById("upgradeCost");
+    const currentUserEl = document.getElementById("currentUser");
+    const leaderList = document.getElementById("leaderList");
+    const loginMessage = document.getElementById("loginMessage");
+    const loginScreen = document.getElementById("loginScreen");
+    const gameScreen = document.getElementById("gameScreen");
+
+    let users = JSON.parse(localStorage.getItem("users") || "{}");
+    let currentUser = null;
+    let coins = 0;
+    let clickValue = 1;
+    let upgradeCost = 10;
+
+    function saveUsers() {
+      localStorage.setItem("users", JSON.stringify(users));
+    }
+
+    function register() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!username || !password) {
+        loginMessage.textContent = "Заповніть усі поля.";
+        loginMessage.className = "error";
+        return;
+      }
+
+      if (users[username]) {
+        loginMessage.textContent = "Такий нікнейм вже зайнятий!";
+        loginMessage.className = "error";
+        return;
+      }
+
+      users[username] = {
+        password: password,
+        coins: 0,
+        clickValue: 1,
+        upgradeCost: 10
+      };
+      saveUsers();
+      loginMessage.textContent = "Реєстрація успішна! Увійдіть.";
+      loginMessage.className = "success";
+    }
+
+    function login() {
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!users[username]) {
+        loginMessage.textContent = "Користувача не знайдено!";
+        loginMessage.className = "error";
+        return;
+      }
+
+      if (users[username].password !== password) {
+        loginMessage.textContent = "Невірний пароль!";
+        loginMessage.className = "error";
+        return;
+      }
+
+      currentUser = username;
+      coins = users[username].coins;
+      clickValue = users[username].clickValue;
+      upgradeCost = users[username].upgradeCost;
+
+      startGame();
+    }
+
+    function startGame() {
+      loginScreen.classList.add("hidden");
+      gameScreen.classList.remove("hidden");
+
+      updateUI();
+      renderLeaderboard();
+    }
+
+    function updateUI() {
+      coinCount.textContent = coins;
+      upgradeCostSpan.textContent = upgradeCost;
+      currentUserEl.textContent = currentUser;
+    }
+
+    function addCoin() {
+      coins += clickValue;
+      saveProgress();
+    }
+
+    function upgrade() {
+      if (coins >= upgradeCost) {
+        coins -= upgradeCost;
+        clickValue *= 10000;
+        upgradeCost *= 5;
+        saveProgress();
+      }
+    }
+
+    function saveProgress() {
+      users[currentUser].coins = coins;
+      users[currentUser].clickValue = clickValue;
+      users[currentUser].upgradeCost = upgradeCost;
+      saveUsers();
+      updateUI();
+      renderLeaderboard();
+    }
+
+    function logout() {
+      currentUser = null;
+      coins = 0;
+      clickValue = 1;
+      upgradeCost = 10;
+      loginScreen.classList.remove("hidden");
+      gameScreen.classList.add("hidden");
+      document.getElementById("username").value = "";
+      document.getElementById("password").value = "";
+      loginMessage.textContent = "";
+    }
+
+    function renderLeaderboard() {
+      const sorted = Object.entries(users)
+        .sort(([, a], [, b]) => b.coins - a.coins)
+        .slice(0, 5);
+
+      leaderList.innerHTML = "";
+      for (const [name, data] of sorted) {
+        const li = document.createElement("li");
+        li.textContent = `${name}: ${data.coins} коінів`;
+        leaderList.appendChild(li);
+      }
+    }
+  </script>
+
+</body>
+</html>
